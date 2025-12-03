@@ -1,0 +1,49 @@
+name: Deploy to Streamlit Cloud
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Run every 24 hours (at 00:00 UTC)
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Update CI/CD trigger file
+        run: |
+          echo "Last CI run: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" > ci_trigger.txt
+          echo "Trigger reason: ${{ github.event_name }}" >> ci_trigger.txt
+          echo "Repository: ${{ github.repository }}" >> ci_trigger.txt
+          echo "Commit SHA: ${{ github.sha }}" >> ci_trigger.txt
+          
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add ci_trigger.txt
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Update CI/CD trigger file - $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            git push
+          fi
+          
+      - name: Deploy to Streamlit
+        run: |
+          echo "Streamlit Cloud automatically picks up changes on push — no manual deploy needed."
+          echo "CI trigger file updated successfully!"
+          echo "Next scheduled run in 24 hours..."
